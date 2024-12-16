@@ -1,4 +1,4 @@
-const API_KEY = 'tuo_finnhub_api_key'; // Inserisci la tua API key di Finnhub qui!!!
+const API_KEY = 'ctg88p9r01qn78n3a7i0ctg88p9r01qn78n3a7ig'; // Inserisci la tua API key di Finnhub qui!!!
 const SYMBOL = 'NG'; // Simbolo del Gas Naturale
 const TIME_PERIOD = 5; // Periodo per le medie mobili e RSI
 const TAKE_PROFIT_PERCENT = 0.02; // 2% take profit
