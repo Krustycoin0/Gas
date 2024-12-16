@@ -1,4 +1,4 @@
-const API_KEY = 'ctg88p9r01qn78n3a7i0ctg88p9r01qn78n3a7ig'; // **IMPORTANTE: QUESTA NON È UNA CHIAVE API DI ALPHA VANTAGE**
+const API_KEY = 'RS0SFP78T9R79AL4'; // **IMPORTANTE: QUESTA NON È UNA CHIAVE API DI ALPHA VANTAGE**
 const SYMBOL = 'NG'; // Simbolo del Gas Naturale
 const TIME_PERIOD = 5; // Periodo per le medie mobili e RSI
 const TAKE_PROFIT_PERCENT = 0.02; // 2% take profit
