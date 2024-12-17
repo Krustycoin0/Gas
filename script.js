@@ -260,3 +260,29 @@ document.addEventListener('DOMContentLoaded', () => {
     aggiornaSegnaliPagina();
     setInterval(aggiornaSegnaliPagina, UPDATE_INTERVAL); // Aggiorna ogni UPDATE_INTERVAL millisecondi
 });
+function generateSignal(price, sma, rsi, fundamentalSentiment, trend, support, resistance) {
+    if (!price || !sma || !rsi) {
+        return null;
+    }
+
+    let signal = null;
+
+    if (trend === "uptrend" && price > sma && rsi < 70 && price > support) {
+        signal = {
+            type: 'Acquista',
+            entryPrice: price,
+            stopLoss: Math.max(support, price * (1 - STOP_LOSS_PERCENT)), // Stop loss sotto il supporto
+            takeProfit: resistance ? Math.min(resistance, price * (1 + TAKE_PROFIT_PERCENT)): price * (1 + TAKE_PROFIT_PERCENT) //Take profit alla resistenza o al target
+        };
+    } else if (trend === "downtrend" && price < sma && rsi > 30 && price < resistance) {
+      signal = {
+          type: 'Vendi',
+          entryPrice: price,
+          stopLoss: Math.min(resistance, price * (1 + STOP_LOSS_PERCENT)), // Stop loss sopra la resistenza
+          takeProfit: support? Math.max(support, price * (1 - STOP_LOSS_PERCENT)): price * (1 - STOP_LOSS_PERCENT) //Take profit al supporto o al target
+      };
+    }
+
+    return signal;
+}
+
