@@ -1,12 +1,15 @@
-const API_KEY = 'RS0SFP78T9R79AL4'; 
-const SYMBOL = 'NG'; // Simbolo del Gas Naturale
-const TIME_PERIOD = 5; // Periodo per le medie mobili e RSI
-const TAKE_PROFIT_PERCENT = 0.02; // 2% take profit
-const STOP_LOSS_PERCENT = 0.01; // 1% stop loss
-const UPDATE_INTERVAL = 10000; // intervallo di aggiornamento in millisecondi (es. 10000 = 10 secondi)
+const API_KEY = 'RS0SFP78T9R79AL4';
+const SYMBOL = 'NG';
+const TIME_PERIOD = 14; // Periodo per medie mobili e RSI (usiamo 14 standard per RSI)
+const TAKE_PROFIT_PERCENT = 0.02;
+const STOP_LOSS_PERCENT = 0.01;
+const UPDATE_INTERVAL = 10000;
+const RSI_OVERBOUGHT = 70; // Soglia RSI ipercomprato
+const RSI_OVERSOLD = 30;  // Soglia RSI ipervenduto
 
-let myChart; // Variabile globale per il grafico
+let myChart;
 let previousClose = null;
+let previousData = null; //per non scaricare sempre i dati se non sono cambiati
 
 // Funzione per ottenere i dati da Alpha Vantage
 async function getGasData() {
@@ -31,7 +34,7 @@ async function getGasData() {
     }
 }
 
-// Funzione per calcolare le medie mobili
+// Funzione per calcolare la media mobile semplice (SMA)
 function calculateSMA(data, timePeriod) {
     if (!data || !data["Time Series (Daily)"]) {
         console.error("Errore: i dati necessari per l'SMA non sono stati restituiti dall'API");
@@ -45,7 +48,6 @@ function calculateSMA(data, timePeriod) {
         console.warn("Avviso: Dati insufficienti per calcolare l'SMA.");
         return null;
     }
-
     let sum = 0;
     for (let i = dailyPrices.length - timePeriod; i < dailyPrices.length; i++) {
         sum += dailyPrices[i];
@@ -57,7 +59,7 @@ function calculateSMA(data, timePeriod) {
 
 // Funzione per calcolare l'RSI
 function calculateRSI(data, timePeriod) {
-    if (!data || !data["Time Series (Daily)"]) {
+   if (!data || !data["Time Series (Daily)"]) {
         console.error("Errore: i dati necessari per l'RSI non sono stati restituiti dall'API");
         return null;
     }
@@ -70,7 +72,7 @@ function calculateRSI(data, timePeriod) {
         return null;
     }
 
-    let gains = [];
+   let gains = [];
     let losses = [];
 
     for (let i = 1; i < dailyPrices.length; i++) {
@@ -84,56 +86,98 @@ function calculateRSI(data, timePeriod) {
         }
     }
     if (gains.length < timePeriod) {
-        console.warn("Avviso: Dati insufficienti per calcolare l'RSI.");
-        return null;
-    }
-    const avgGain = gains.slice(gains.length - timePeriod).reduce((a, b) => a + b, 0) / timePeriod;
-    const avgLoss = losses.slice(losses.length - timePeriod).reduce((a, b) => a + b, 0) / timePeriod;
+      console.warn("Avviso: Dati insufficienti per calcolare l'RSI.");
+       return null;
+     }
+     let avgGain = gains.slice(gains.length - timePeriod).reduce((a, b) => a + b, 0) / timePeriod;
+     let avgLoss = losses.slice(losses.length - timePeriod).reduce((a, b) => a + b, 0) / timePeriod;
+    
+    //Calcola media iniziale
+     for (let i = gains.length - timePeriod; i > 0; i--) {
+        let currentAvgGain =  gains.slice(i - timePeriod, i).reduce((a,b) => a + b, 0) / timePeriod;
+        let currentAvgLoss = losses.slice(i - timePeriod, i).reduce((a,b) => a + b, 0) / timePeriod;
+        
+        avgGain = (avgGain * (timePeriod -1) + gains[i-1]) / timePeriod;
+        avgLoss = (avgLoss * (timePeriod -1) + losses[i-1]) / timePeriod;
+
+     }
+    
 
     if (avgLoss === 0) {
-        console.warn("Avviso: avgLoss = 0, RSI = 100.");
-        return 100;
+       console.warn("Avviso: avgLoss = 0, RSI = 100.");
+       return 100;
     }
-    const rs = avgGain / avgLoss;
-    const rsi = 100 - (100 / (1 + rs));
-    return rsi;
+   const rs = avgGain / avgLoss;
+   const rsi = 100 - (100 / (1 + rs));
+   return rsi;
 }
 
-//Funzione per simulare l'analisi fondamentale con un indicatore di sentiment
+
+// Funzione per simulare l'analisi fondamentale con un indicatore di sentiment
 function simulateFundamentalAnalysis() {
     const sentiment = Math.random() < 0.6 ? "positivo" : "negativo";
     return sentiment;
 }
 
+// Funzione per calcolare il trend (semplificato con l'SMA)
+function calculateTrend(price, sma) {
+    if (price > sma) {
+        return "uptrend";
+    } else if (price < sma) {
+        return "downtrend";
+    } else {
+        return "sideways"; // Se il prezzo è uguale alla media, consideriamo il trend come laterale
+    }
+}
+
+// Funzione per determinare i livelli di supporto e resistenza
+function calculateSupportResistance(data) {
+        if (!data || !data["Time Series (Daily)"]) {
+        console.error("Errore: i dati necessari per il supporto e la resistenza non sono stati restituiti dall'API");
+        return null;
+    }
+    const timeSeries = data["Time Series (Daily)"];
+    const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+     if (dailyPrices.length < 20) {
+        console.warn("Avviso: Dati insufficienti per calcolare supporto e resistenza.");
+        return {support: null, resistance: null};
+    }
+    const last20Prices = dailyPrices.slice(-20);
+    const support = Math.min(...last20Prices);
+    const resistance = Math.max(...last20Prices);
+    return { support, resistance };
+}
 // Funzione per generare i segnali
-function generateSignal(price, sma, rsi, fundamentalSentiment) {
-    if (!price || !sma || !rsi) {
+function generateSignal(price, sma, rsi, fundamentalSentiment, trend, support, resistance) {
+     if (!price || !sma || !rsi || !trend) {
         return null;
     }
 
     let signal = null;
 
-    if (price > sma && rsi < 70 && fundamentalSentiment == "positivo") {
+   if (trend === "uptrend" && price > sma && rsi < RSI_OVERBOUGHT && price > support) {
         signal = {
             type: 'Acquista',
             entryPrice: price,
-            stopLoss: price * (1 - STOP_LOSS_PERCENT),
-            takeProfit: price * (1 + TAKE_PROFIT_PERCENT)
+            stopLoss: Math.max(support, price * (1 - STOP_LOSS_PERCENT)), // Stop loss sotto il supporto
+            takeProfit: resistance ? Math.min(resistance, price * (1 + TAKE_PROFIT_PERCENT)) : price * (1 + TAKE_PROFIT_PERCENT) // Take profit alla resistenza o al target
         };
-    } else if (price < sma && rsi > 30 && fundamentalSentiment == "negativo") {
+    } else if (trend === "downtrend" && price < sma && rsi > RSI_OVERSOLD && price < resistance) {
         signal = {
             type: 'Vendi',
             entryPrice: price,
-            stopLoss: price * (1 + STOP_LOSS_PERCENT),
-            takeProfit: price * (1 - TAKE_PROFIT_PERCENT)
+            stopLoss: Math.min(resistance, price * (1 + STOP_LOSS_PERCENT)), // Stop loss sopra la resistenza
+            takeProfit: support ? Math.max(support, price * (1 - TAKE_PROFIT_PERCENT)) : price * (1 - TAKE_PROFIT_PERCENT) // Take profit al supporto o al target
         };
     }
+
+
     return signal;
 }
 
 // Funzione per visualizzare il grafico
 async function aggiornaGrafico(data, signal) {
-    if (!data || !data["Time Series (Daily)"]) {
+     if (!data || !data["Time Series (Daily)"]) {
         console.error("Errore: i dati necessari per visualizzare il grafico non sono stati restituiti dall'API");
         return null;
     }
@@ -143,7 +187,7 @@ async function aggiornaGrafico(data, signal) {
 
 
     const chartData = {
-        labels: Array.from({ length: dailyPrices.length }, (_, i) => i + 1), // Etichette asse X (giorni)
+        labels: Array.from({ length: dailyPrices.length }, (_, i) => i + 1),
         datasets: [{
             label: 'Prezzo Gas Naturale',
             data: dailyPrices,
@@ -152,7 +196,7 @@ async function aggiornaGrafico(data, signal) {
         }]
     };
 
-    if (signal) {
+     if (signal) {
         chartData.datasets[0].pointBackgroundColor = dailyPrices.map((price, index) => {
             if (signal.entryPrice && index === dailyPrices.length - 1) {
                 return signal.type === "Acquista" ? 'green' : 'red';
@@ -161,13 +205,14 @@ async function aggiornaGrafico(data, signal) {
             }
         });
 
-        chartData.datasets[0].pointRadius = dailyPrices.map((price, index) => {
+         chartData.datasets[0].pointRadius = dailyPrices.map((price, index) => {
             if (signal.entryPrice && index === dailyPrices.length - 1) {
                 return 5;
             } else {
                 return 0;
             }
-        });
+         });
+
         chartData.datasets[0].annotations = [{
             type: 'line',
             xMin: dailyPrices.length - 1,
@@ -193,20 +238,20 @@ async function aggiornaGrafico(data, signal) {
                 display: true,
             }
         }];
-    }
+     }
 
-    const chartConfig = {
+     const chartConfig = {
         type: 'line',
-        data: chartData,
-        options: {
-            responsive: true,
+         data: chartData,
+         options: {
+             responsive: true,
             plugins: {
                 annotation: {
                     annotations: chartData.datasets[0].annotations
                 }
-            }
-        }
-    };
+             }
+         }
+     };
 
     const chartCanvas = document.getElementById("myChart");
     if (chartCanvas) {
@@ -216,27 +261,41 @@ async function aggiornaGrafico(data, signal) {
         myChart = new Chart(chartCanvas, chartConfig);
     }
 }
-
 // Funzione per aggiornare la pagina dei segnali
 async function aggiornaSegnaliPagina() {
-    const data = await getGasData();
-    if (!data) {
+   let data;
+
+    if(previousData){
+         const latestData = await getGasData();
+         if(JSON.stringify(latestData) === JSON.stringify(previousData)){
+             data = previousData;
+         } else {
+             data = latestData;
+             previousData = latestData;
+         }
+    }else{
+         data = await getGasData();
+        previousData = data;
+    }
+   if (!data) {
         console.error("Errore: dati API nulli, impossibile aggiornare la pagina.");
         const segnaliContainer = document.getElementById('segnali-container');
-        if (segnaliContainer) {
+         if (segnaliContainer) {
             segnaliContainer.innerHTML = "<p>Nessun segnale generato al momento (errore API)</p>";
         }
         return;
     }
 
-      const timeSeries = data["Time Series (Daily)"];
+     const timeSeries = data["Time Series (Daily)"];
     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
     const sma = calculateSMA(data, TIME_PERIOD);
     const rsi = calculateRSI(data, TIME_PERIOD);
     const fundamentalSentiment = simulateFundamentalAnalysis();
+     const { support, resistance } = calculateSupportResistance(data);
     const price = dailyPrices[dailyPrices.length - 1];
-    const signal = generateSignal(price, sma, rsi, fundamentalSentiment);
+    const trend = calculateTrend(price, sma);
+    const signal = generateSignal(price, sma, rsi, fundamentalSentiment, trend, support, resistance);
 
     const segnaliContainer = document.getElementById('segnali-container');
 
@@ -250,39 +309,14 @@ async function aggiornaSegnaliPagina() {
     } else if (segnaliContainer) {
         segnaliContainer.innerHTML = "<p>Nessun segnale generato al momento</p>";
     }
-    aggiornaGrafico(data, signal);
+
+   aggiornaGrafico(data, signal);
+
 
 }
-
 
 // Aggiorna i segnali al caricamento della pagina e imposta l'intervallo per gli aggiornamenti futuri
 document.addEventListener('DOMContentLoaded', () => {
     aggiornaSegnaliPagina();
     setInterval(aggiornaSegnaliPagina, UPDATE_INTERVAL); // Aggiorna ogni UPDATE_INTERVAL millisecondi
 });
-function generateSignal(price, sma, rsi, fundamentalSentiment, trend, support, resistance) {
-    if (!price || !sma || !rsi) {
-        return null;
-    }
-
-    let signal = null;
-
-    if (trend === "uptrend" && price > sma && rsi < 70 && price > support) {
-        signal = {
-            type: 'Acquista',
-            entryPrice: price,
-            stopLoss: Math.max(support, price * (1 - STOP_LOSS_PERCENT)), // Stop loss sotto il supporto
-            takeProfit: resistance ? Math.min(resistance, price * (1 + TAKE_PROFIT_PERCENT)): price * (1 + TAKE_PROFIT_PERCENT) //Take profit alla resistenza o al target
-        };
-    } else if (trend === "downtrend" && price < sma && rsi > 30 && price < resistance) {
-      signal = {
-          type: 'Vendi',
-          entryPrice: price,
-          stopLoss: Math.min(resistance, price * (1 + STOP_LOSS_PERCENT)), // Stop loss sopra la resistenza
-          takeProfit: support? Math.max(support, price * (1 - STOP_LOSS_PERCENT)): price * (1 - STOP_LOSS_PERCENT) //Take profit al supporto o al target
-      };
-    }
-
-    return signal;
-}
-
