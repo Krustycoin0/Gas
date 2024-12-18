@@ -1,13 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gas Trading Signals</title>
-    <link rel="stylesheet" href="style.css"> <!--Link to your CSS file -->
+    <link rel="stylesheet" href="style.css">
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+            integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+            crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
-    <div id="segnali-container"></div>
-    <canvas id="myChart"></canvas>
-     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- include chart.js-->
-     <script src="script.js"></script>  <!--Link to your Javascript file-->
+    <header>
+         <div class="container">
+            <h1><i class="fa-solid fa-chart-line"></i> Trading Gas Naturale</h1>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="content-wrapper">
+            <section class="signal-area">
+                 <h2>Segnali</h2>
+                <div id="segnali-container" class="signal-box"></div>
+            </section>
+
+            <section class="chart-area">
+                <h2>Grafico Prezzo Gas Naturale</h2>
+                <canvas id="myChart"></canvas>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 Trading Gas Naturale App</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
