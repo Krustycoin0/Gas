@@ -1,16 +1,19 @@
 const API_KEY = 'UUJ6SAVF20BOYYPM';
 const SYMBOL = 'NG';
-const TIME_PERIOD = 14;
+const TIME_PERIOD_RSI = 14;
+const TIME_PERIOD_EMA = 250;
+const TIME_PERIOD_STOCH = 10;
+const STOCH_OVERBOUGHT = 94;
+const STOCH_OVERSOLD = 10;
 const TAKE_PROFIT_PERCENT = 0.02;
 const STOP_LOSS_PERCENT = 0.01;
 const UPDATE_INTERVAL = 10000;
-const RSI_OVERBOUGHT = 70;
-const RSI_OVERSOLD = 30;
 
 let myChart;
 let previousClose = null;
 let previousData = null;
-
+const RSI_OVERBOUGHT = 70;
+const RSI_OVERSOLD = 30;
 // Funzione per ottenere i dati da Alpha Vantage
 async function getGasData() {
     const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${SYMBOL}&apikey=${API_KEY}`;
@@ -22,11 +25,10 @@ async function getGasData() {
             return null;
         }
         const data = await response.json();
-        if (!data || !data["Time Series (Daily)"]) {
+         if (!data || !data["Time Series (Daily)"]) {
             console.error("Errore: i dati API sono vuoti o hanno un formato inaspettato.");
             return null;
         }
-
         return data;
     } catch (error) {
         console.error("Errore nel recupero dei dati da Alpha Vantage:", error);
@@ -42,7 +44,7 @@ function calculateSMA(data, timePeriod) {
     }
 
     const timeSeries = data["Time Series (Daily)"];
-    const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
 
     if (dailyPrices.length < timePeriod) {
@@ -58,6 +60,29 @@ function calculateSMA(data, timePeriod) {
     return sma;
 }
 
+// Funzione per calcolare l'EMA
+function calculateEMA(data, timePeriod) {
+    if (!data || !data["Time Series (Daily)"]) {
+        console.error("calculateEMA: Errore: i dati necessari per l'EMA non sono stati restituiti dall'API");
+        return null;
+    }
+   const timeSeries = data["Time Series (Daily)"];
+    const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+
+
+    if (dailyPrices.length < timePeriod) {
+        console.warn("calculateEMA: Avviso: Dati insufficienti per calcolare l'EMA.");
+        return null;
+    }
+
+      let ema = 0;
+     let k = 2 / (timePeriod + 1);
+
+    for (let i = 0; i < dailyPrices.length; i++) {
+        ema = (dailyPrices[i] * k) + (ema * (1 - k))
+    }
+    return ema;
+}
 // Funzione per calcolare l'RSI
 function calculateRSI(data, timePeriod) {
     if (!data || !data["Time Series (Daily)"]) {
@@ -111,6 +136,31 @@ function calculateRSI(data, timePeriod) {
    return rsi;
 }
 
+// Funzione per calcolare lo Stocastico
+function calculateStochastic(data, timePeriod) {
+   if (!data || !data["Time Series (Daily)"]) {
+        console.error("calculateStochastic: Errore: i dati necessari per lo stocastico non sono stati restituiti dall'API");
+        return null;
+    }
+    const timeSeries = data["Time Series (Daily)"];
+    const dailyPrices = Object.values(timeSeries).map(dayData => ({
+        close: parseFloat(dayData['4. close']),
+        low: parseFloat(dayData['3. low']),
+        high: parseFloat(dayData['2. high'])
+     })).reverse();
+
+    if (dailyPrices.length < timePeriod) {
+        console.warn("calculateStochastic: Avviso: Dati insufficienti per calcolare lo Stocastico.");
+        return null;
+    }
+    const periodPrices = dailyPrices.slice(0, timePeriod)
+    const highestHigh = Math.max(...periodPrices.map(day => day.high));
+    const lowestLow = Math.min(...periodPrices.map(day => day.low));
+    const currentClose = dailyPrices[0].close
+    const stochastic = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+
+    return stochastic;
+}
 
 // Funzione per simulare l'analisi fondamentale con un indicatore di sentiment
 function simulateFundamentalAnalysis() {
@@ -119,10 +169,10 @@ function simulateFundamentalAnalysis() {
 }
 
 // Funzione per calcolare il trend
-function calculateTrend(price, sma) {
-    if (price > sma) {
+function calculateTrend(price, ema) {
+    if (price > ema) {
         return "uptrend";
-    } else if (price < sma) {
+    } else if (price < ema) {
         return "downtrend";
     } else {
         return "sideways";
@@ -136,7 +186,8 @@ function calculateSupportResistance(data) {
         return null;
     }
     const timeSeries = data["Time Series (Daily)"];
-    const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+
     if (dailyPrices.length < 20) {
         console.warn("Avviso: Dati insufficienti per calcolare supporto e resistenza.");
         return {support: null, resistance: null};
@@ -147,26 +198,27 @@ function calculateSupportResistance(data) {
     return { support, resistance };
 }
 // Funzione per generare i segnali
-function generateSignal(price, sma, rsi, fundamentalSentiment, trend, support, resistance) {
-   if (!price || !sma || !rsi || !trend) {
+function generateSignal(price, ema, rsi, stochastic, fundamentalSentiment, trend, support, resistance) {
+   if (!price || !ema || !rsi || !trend || stochastic == null) {
         return null;
     }
 
-    let signal = null;
+     let signal = null;
 
-   if (trend === "uptrend" && price > sma && rsi < RSI_OVERBOUGHT && price > support) {
+   if (trend === "uptrend" &&  rsi < RSI_OVERBOUGHT  && stochastic < STOCH_OVERSOLD && price > support) {
         signal = {
             type: 'Acquista',
             entryPrice: price,
-            stopLoss: Math.max(support, price * (1 - STOP_LOSS_PERCENT)),
+             stopLoss: Math.max(support, price * (1 - STOP_LOSS_PERCENT)),
             takeProfit: resistance ? Math.min(resistance, price * (1 + TAKE_PROFIT_PERCENT)) : price * (1 + TAKE_PROFIT_PERCENT)
-        };
-    } else if (trend === "downtrend" && price < sma && rsi > RSI_OVERSOLD && price < resistance) {
+         };
+    }
+     else if (trend === "downtrend" && rsi > RSI_OVERSOLD && stochastic > STOCH_OVERBOUGHT  && price < resistance ) {
         signal = {
-            type: 'Vendi',
+           type: 'Vendi',
             entryPrice: price,
-            stopLoss: Math.min(resistance, price * (1 + STOP_LOSS_PERCENT)),
-            takeProfit: support ? Math.max(support, price * (1 - STOP_LOSS_PERCENT)) : price * (1 - STOP_LOSS_PERCENT)
+             stopLoss: Math.min(resistance, price * (1 + STOP_LOSS_PERCENT)),
+           takeProfit: support ? Math.max(support, price * (1 - STOP_LOSS_PERCENT)) : price * (1 - STOP_LOSS_PERCENT)
         };
     }
     return signal;
@@ -181,6 +233,7 @@ async function aggiornaGrafico(data, signal) {
 
     const timeSeries = data["Time Series (Daily)"];
     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+    const ema = calculateEMA(data, TIME_PERIOD_EMA);
      const { support, resistance } = calculateSupportResistance(data);
 
     const chartData = {
@@ -190,8 +243,16 @@ async function aggiornaGrafico(data, signal) {
             data: dailyPrices,
              borderColor: 'rgb(75, 192, 192)',
             tension: 0.1,
-        }]
+           }]
     };
+    if(ema) {
+          chartData.datasets.push({
+               label: 'EMA 250',
+            data: dailyPrices.map(() => ema),
+              borderColor: 'yellow',
+               borderDash: [5, 5],
+           })
+    }
 
 
     if (support) {
@@ -303,9 +364,9 @@ async function aggiornaSegnaliPagina() {
         }
     } else {
         data = await getGasData();
-        previousData = data;
+         previousData = data;
     }
-    if (!data) {
+   if (!data) {
         console.error("Errore: dati API nulli, impossibile aggiornare la pagina.");
         const segnaliContainer = document.getElementById('segnali-container');
         if (segnaliContainer) {
@@ -316,23 +377,24 @@ async function aggiornaSegnaliPagina() {
     const timeSeries = data["Time Series (Daily)"];
     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
-    const sma = calculateSMA(data, TIME_PERIOD);
-    const rsi = calculateRSI(data, TIME_PERIOD);
+    const ema = calculateEMA(data, TIME_PERIOD_EMA);
+    const rsi = calculateRSI(data, TIME_PERIOD_RSI);
+    const stochastic = calculateStochastic(data, TIME_PERIOD_STOCH);
     const fundamentalSentiment = simulateFundamentalAnalysis();
     const { support, resistance } = calculateSupportResistance(data);
-    const price = dailyPrices[dailyPrices.length - 1];
-    const trend = calculateTrend(price, sma);
-    const signal = generateSignal(price, sma, rsi, fundamentalSentiment, trend, support, resistance);
+   const price = dailyPrices[dailyPrices.length - 1];
+     const trend = calculateTrend(price, ema);
+    const signal = generateSignal(price, ema, rsi, stochastic, fundamentalSentiment, trend, support, resistance);
     const segnaliContainer = document.getElementById('segnali-container');
 
-    if (segnaliContainer) {
+     if (segnaliContainer) {
          if (signal) {
-              segnaliContainer.innerHTML = `<p>Segnale: <span style="font-weight: bold; color: ${signal.type === 'Acquista' ? 'green' : 'red'};">${signal.type}</span> a ${signal.entryPrice.toFixed(2)}</p>`;
+             segnaliContainer.innerHTML = `<p>Segnale: <span style="font-weight: bold; color: ${signal.type === 'Acquista' ? 'green' : 'red'};">${signal.type}</span> a ${signal.entryPrice.toFixed(2)} con TP: ${signal.takeProfit.toFixed(2)} e SL: ${signal.stopLoss.toFixed(2)}</p>`;
          } else {
-              segnaliContainer.innerHTML = "<p>Nessun segnale generato al momento</p>";
+             segnaliContainer.innerHTML = "<p>Nessun segnale generato al momento</p>";
          }
      }
-     aggiornaGrafico(data, signal);
+    aggiornaGrafico(data, signal);
 }
 
 // Aggiorna i segnali al caricamento della pagina e imposta l'intervallo per gli aggiornamenti futuri
