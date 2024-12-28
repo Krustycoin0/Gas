@@ -14,6 +14,7 @@ let previousClose = null;
 let previousData = null;
 const RSI_OVERBOUGHT = 70;
 const RSI_OVERSOLD = 30;
+
 // Funzione per ottenere i dati da Alpha Vantage
 async function getGasData() {
     const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${SYMBOL}&apikey=${API_KEY}`;
@@ -231,111 +232,149 @@ async function aggiornaGrafico(data, signal) {
         return null;
     }
 
-    const timeSeries = data["Time Series (Daily)"];
-    const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+   const timeSeries = data["Time Series (Daily)"];
+    const dailyData = Object.values(timeSeries).map(dayData => ({
+        open: parseFloat(dayData['1. open']),
+        high: parseFloat(dayData['2. high']),
+        low: parseFloat(dayData['3. low']),
+        close: parseFloat(dayData['4. close'])
+    })).reverse();
     const ema = calculateEMA(data, TIME_PERIOD_EMA);
      const { support, resistance } = calculateSupportResistance(data);
 
     const chartData = {
-         labels: Array.from({ length: dailyPrices.length }, (_, i) => i + 1),
+         labels: Array.from({ length: dailyData.length }, (_, i) => i + 1),
         datasets: [{
             label: 'Prezzo Gas Naturale',
-            data: dailyPrices,
-             borderColor: 'rgb(75, 192, 192)',
-            tension: 0.1,
+            data: dailyData.map(day => ({
+                x:  Array.from({ length: dailyData.length }, (_, i) => i + 1)[dailyData.indexOf(day)],
+                o: day.open,
+                h: day.high,
+                l: day.low,
+                c: day.close
+            })),
+             borderColor: 'black',
+             type: 'candlestick',
+            
            }]
     };
-    if(ema) {
+   if(ema) {
           chartData.datasets.push({
                label: 'EMA 250',
-            data: dailyPrices.map(() => ema),
-              borderColor: 'yellow',
-               borderDash: [5, 5],
+                data: dailyData.map(() => ({ x: Array.from({ length: dailyData.length }, (_, i) => i + 1),y:ema})),
+                borderColor: 'blue',
+                type: 'line',
+               
            })
     }
 
 
     if (support) {
-         chartData.datasets[0].annotations = [{
-            type: 'line',
+        if (!chartData.datasets[0].annotations) {
+             chartData.datasets[0].annotations = [];
+        }
+         chartData.datasets[0].annotations.push({
+           type: 'line',
             yMin: support,
             yMax: support,
-            borderColor: 'blue',
+            borderColor: 'green',
              borderWidth: 2,
-            label: {
-                 content: 'Supporto',
-               display: true,
+           label: {
+                content: 'Supporto',
+                display: true,
             }
-        }];
+        });
     }
     if(resistance){
-         if (!chartData.datasets[0].annotations) {
+          if (!chartData.datasets[0].annotations) {
               chartData.datasets[0].annotations = [];
           }
          chartData.datasets[0].annotations.push({
-            type: 'line',
-            yMin: resistance,
-            yMax: resistance,
-            borderColor: 'purple',
+             type: 'line',
+             yMin: resistance,
+             yMax: resistance,
+            borderColor: 'red',
               borderWidth: 2,
-            label: {
-                 content: 'Resistenza',
-                 display: true,
-            }
+             label: {
+                  content: 'Resistenza',
+                  display: true,
+             }
         });
     }
 
     if (signal) {
-        chartData.datasets[0].pointBackgroundColor = dailyPrices.map((price, index) => {
-            if (signal.entryPrice && index === dailyPrices.length - 1) {
-                return signal.type === "Acquista" ? 'green' : 'red';
-            } else {
-                return 'rgba(0, 0, 0, 0)';
-            }
-        });
-         chartData.datasets[0].pointRadius = dailyPrices.map((price, index) => {
-            if (signal.entryPrice && index === dailyPrices.length - 1) {
-                return 5;
-            } else {
-                return 0;
-            }
-        });
          if (!chartData.datasets[0].annotations) {
-              chartData.datasets[0].annotations = [];
-          }
-            chartData.datasets[0].annotations.push({
+             chartData.datasets[0].annotations = [];
+        }
+           chartData.datasets[0].annotations.push(
+                {
                 type: 'line',
-                xMin: dailyPrices.length - 1,
-                xMax: dailyPrices.length - 1,
-                yMin: signal.takeProfit,
-                yMax: signal.takeProfit,
+                    xMin:  dailyData.length - 1,
+                    xMax: dailyData.length - 1,
+                     yMin: signal.takeProfit,
+                     yMax: signal.takeProfit,
                 borderColor: 'green',
+                borderDash: [5, 5],
                 borderWidth: 2,
-                label: {
+               label: {
                    content: 'Take Profit',
-                    display: true,
+                   display: true,
                 }
-            }, {
+            },
+           {
                 type: 'line',
-                xMin: dailyPrices.length - 1,
-                xMax: dailyPrices.length - 1,
+                xMin:  dailyData.length - 1,
+                 xMax: dailyData.length - 1,
                yMin: signal.stopLoss,
                 yMax: signal.stopLoss,
-                borderColor: 'red',
+                 borderColor: 'red',
+                 borderDash: [5, 5],
                 borderWidth: 2,
-                label: {
+               label: {
                     content: 'Stop Loss',
                    display: true,
-               }
+              }
+             },
+               {
+                type: 'point',
+                xValue: dailyData.length - 1,
+                yValue: signal.entryPrice,
+                backgroundColor: signal.type === "Acquista" ? 'green' : 'red',
+                radius: 8,
+                    label:{
+                        content: signal.type === "Acquista" ? '⬆️' : '⬇️',
+                        display: true,
+                         font:{
+                           size: 14
+                         }
+                     }
              });
+       
     }
 
     const chartConfig = {
-         type: 'line',
+        type: 'scatter',
         data: chartData,
         options: {
             responsive: true,
+             scales: {
+                x: {
+                    title: {
+                         display: true,
+                         text: 'Giorni'
+                  }
+                 },
+                y: {
+                   title: {
+                        display: true,
+                        text: 'Prezzo'
+                   }
+                }
+             },
              plugins: {
+                 legend: {
+                     display: true,
+                 },
                  annotation: {
                      annotations: chartData.datasets[0].annotations
                  }
