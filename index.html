@@ -27,12 +27,13 @@
 </head>
 <body>
     <h1>Grafico Natural Gas</h1>
-      <div id="chart-container">
+    <div id="chart-container">
         <canvas id="myChart"></canvas>
     </div>
     <div id="segnali-container">
         <p>Caricamento dei segnali...</p>
     </div>
+
 
     <script>
 const API_KEY = 'UUJ6SAVF20BOYYPM';
@@ -60,13 +61,18 @@ async function getGasData() {
         const response = await fetch(url);
         if (!response.ok) {
             console.error("Errore HTTP nella chiamata API:", response.status, response.statusText);
+             const text = await response.text()
+           console.error("API Error:", text);
+
             return null;
         }
         const data = await response.json();
          if (!data || !data["Time Series (Daily)"]) {
+             console.log("API Response:", data)
             console.error("Errore: i dati API sono vuoti o hanno un formato inaspettato.");
             return null;
         }
+          console.log("API Response:", data)
         return data;
     } catch (error) {
         console.error("Errore nel recupero dei dati da Alpha Vantage:", error);
@@ -84,6 +90,8 @@ function calculateSMA(data, timePeriod) {
     const timeSeries = data["Time Series (Daily)"];
      const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
+     console.log("dailyPrices", dailyPrices);
+
 
     if (dailyPrices.length < timePeriod) {
         console.warn("Avviso: Dati insufficienti per calcolare l'SMA.");
@@ -95,6 +103,7 @@ function calculateSMA(data, timePeriod) {
         sum += dailyPrices[i];
     }
     const sma = sum / timePeriod;
+      console.log("SMA:", sma);
     return sma;
 }
 
@@ -107,6 +116,7 @@ function calculateEMA(data, timePeriod) {
    const timeSeries = data["Time Series (Daily)"];
     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
+     console.log("dailyPrices", dailyPrices);
 
     if (dailyPrices.length < timePeriod) {
         console.warn("calculateEMA: Avviso: Dati insufficienti per calcolare l'EMA.");
@@ -119,6 +129,7 @@ function calculateEMA(data, timePeriod) {
     for (let i = 0; i < dailyPrices.length; i++) {
         ema = (dailyPrices[i] * k) + (ema * (1 - k))
     }
+    console.log("EMA:", ema);
     return ema;
 }
 // Funzione per calcolare l'RSI
@@ -130,6 +141,8 @@ function calculateRSI(data, timePeriod) {
 
     const timeSeries = data["Time Series (Daily)"];
     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+
+     console.log("dailyPrices", dailyPrices);
 
     if (dailyPrices.length < timePeriod + 1) {
         console.warn("Avviso: Dati insufficienti per calcolare l'RSI.");
@@ -171,6 +184,7 @@ function calculateRSI(data, timePeriod) {
     }
    const rs = avgGain / avgLoss;
    const rsi = 100 - (100 / (1 + rs));
+    console.log("RSI:", rsi);
    return rsi;
 }
 
@@ -187,6 +201,8 @@ function calculateStochastic(data, timePeriod) {
         high: parseFloat(dayData['2. high'])
      })).reverse();
 
+      console.log("dailyPrices", dailyPrices);
+
     if (dailyPrices.length < timePeriod) {
         console.warn("calculateStochastic: Avviso: Dati insufficienti per calcolare lo Stocastico.");
         return null;
@@ -196,23 +212,27 @@ function calculateStochastic(data, timePeriod) {
     const lowestLow = Math.min(...periodPrices.map(day => day.low));
     const currentClose = dailyPrices[0].close
     const stochastic = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
-
+   console.log("Stochastic:", stochastic);
     return stochastic;
 }
 
 // Funzione per simulare l'analisi fondamentale con un indicatore di sentiment
 function simulateFundamentalAnalysis() {
     const sentiment = Math.random() < 0.6 ? "positivo" : "negativo";
+    console.log("Sentiment:", sentiment);
     return sentiment;
 }
 
 // Funzione per calcolare il trend
 function calculateTrend(price, ema) {
     if (price > ema) {
+      console.log("Trend: uptrend");
         return "uptrend";
     } else if (price < ema) {
+         console.log("Trend: downtrend");
         return "downtrend";
     } else {
+       console.log("Trend: sideways");
         return "sideways";
     }
 }
@@ -221,23 +241,25 @@ function calculateTrend(price, ema) {
 function calculateSupportResistance(data) {
     if (!data || !data["Time Series (Daily)"]) {
         console.error("Errore: i dati necessari per il supporto e la resistenza non sono stati restituiti dall'API");
-        return null;
+        return {support: null, resistance: null};
     }
     const timeSeries = data["Time Series (Daily)"];
      const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
-
+      console.log("dailyPrices", dailyPrices);
     if (dailyPrices.length < 20) {
         console.warn("Avviso: Dati insufficienti per calcolare supporto e resistenza.");
-        return {support: null, resistance: null};
+       return {support: null, resistance: null};
     }
     const last20Prices = dailyPrices.slice(-20);
     const support = Math.min(...last20Prices);
     const resistance = Math.max(...last20Prices);
+    console.log("Support:", support, "Resistance:", resistance);
     return { support, resistance };
 }
 // Funzione per generare i segnali
 function generateSignal(price, ema, rsi, stochastic, fundamentalSentiment, trend, support, resistance) {
    if (!price || !ema || !rsi || !trend || stochastic == null) {
+      console.log("Signal: null because a value is missing")
         return null;
     }
 
@@ -259,6 +281,7 @@ function generateSignal(price, ema, rsi, stochastic, fundamentalSentiment, trend
            takeProfit: support ? Math.max(support, price * (1 - STOP_LOSS_PERCENT)) : price * (1 - STOP_LOSS_PERCENT)
         };
     }
+   console.log("Signal:", signal);
     return signal;
 }
 
@@ -276,9 +299,10 @@ async function aggiornaGrafico(data, signal) {
         low: parseFloat(dayData['3. low']),
         close: parseFloat(dayData['4. close'])
     })).reverse();
+    console.log("dailyData", dailyData);
     const ema = calculateEMA(data, TIME_PERIOD_EMA);
      const { support, resistance } = calculateSupportResistance(data);
-
+    
     const chartData = {
          labels: Array.from({ length: dailyData.length }, (_, i) => i + 1),
         datasets: [{
@@ -305,12 +329,11 @@ async function aggiornaGrafico(data, signal) {
            })
     }
 
-
     if (support) {
-        if (!chartData.datasets[0].annotations) {
+           if (!chartData.datasets[0].annotations) {
              chartData.datasets[0].annotations = [];
-        }
-         chartData.datasets[0].annotations.push({
+            }
+        chartData.datasets[0].annotations.push({
            type: 'line',
             yMin: support,
             yMax: support,
@@ -323,9 +346,9 @@ async function aggiornaGrafico(data, signal) {
         });
     }
     if(resistance){
-          if (!chartData.datasets[0].annotations) {
-              chartData.datasets[0].annotations = [];
-          }
+        if (!chartData.datasets[0].annotations) {
+             chartData.datasets[0].annotations = [];
+        }
          chartData.datasets[0].annotations.push({
              type: 'line',
              yMin: resistance,
@@ -338,8 +361,7 @@ async function aggiornaGrafico(data, signal) {
              }
         });
     }
-
-    if (signal) {
+  if (signal) {
          if (!chartData.datasets[0].annotations) {
              chartData.datasets[0].annotations = [];
         }
@@ -433,12 +455,15 @@ async function aggiornaSegnaliPagina() {
     if (previousData) {
         const latestData = await getGasData();
         if (JSON.stringify(latestData) === JSON.stringify(previousData)) {
+           console.log("No new data from the API, reusing the previous data");
             data = previousData;
         } else {
+             console.log("New data from the API")
             data = latestData;
             previousData = latestData;
         }
     } else {
+        console.log("First time getting data from the API")
         data = await getGasData();
          previousData = data;
     }
