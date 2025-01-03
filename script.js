@@ -1,5 +1,5 @@
-const API_KEY = 'UUJ6SAVF20BOYYPM';
-const SYMBOL = 'NG';
+const API_KEY = 'TUO_API_KEY_QUI'; // Inserisci qui la tua API Key di Alpha Vantage
+const SYMBOL = 'EURUSD'; // Cambio coppia EUR/USD
 const TIME_PERIOD_RSI = 14;
 const TIME_PERIOD_EMA = 250;
 const TIME_PERIOD_STOCH = 10;
@@ -16,25 +16,24 @@ const RSI_OVERBOUGHT = 70;
 const RSI_OVERSOLD = 30;
 
 // Funzione per ottenere i dati da Alpha Vantage
-async function getGasData() {
-    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${SYMBOL}&apikey=${API_KEY}`;
+async function getForexData() {
+    const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=EUR&to_symbol=USD&apikey=${API_KEY}`;
 
     try {
         const response = await fetch(url);
         if (!response.ok) {
             console.error("Errore HTTP nella chiamata API:", response.status, response.statusText);
-             const text = await response.text()
-           console.error("API Error:", text);
-
+            const text = await response.text()
+            console.error("API Error:", text);
             return null;
         }
         const data = await response.json();
-         if (!data || !data["Time Series (Daily)"]) {
-             console.log("API Response:", data)
+        if (!data || !data["Time Series FX (Daily)"]) {
+            console.log("API Response:", data)
             console.error("Errore: i dati API sono vuoti o hanno un formato inaspettato.");
             return null;
         }
-          console.log("API Response:", data)
+        console.log("API Response:", data)
         return data;
     } catch (error) {
         console.error("Errore nel recupero dei dati da Alpha Vantage:", error);
@@ -44,15 +43,15 @@ async function getGasData() {
 
 // Funzione per calcolare la media mobile semplice (SMA)
 function calculateSMA(data, timePeriod) {
-     if (!data || !data["Time Series (Daily)"]) {
+    if (!data || !data["Time Series FX (Daily)"]) {
         console.error("Errore: i dati necessari per l'SMA non sono stati restituiti dall'API");
         return null;
     }
 
-    const timeSeries = data["Time Series (Daily)"];
-     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+    const timeSeries = data["Time Series FX (Daily)"];
+    const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
-     console.log("dailyPrices", dailyPrices);
+    console.log("dailyPrices", dailyPrices);
 
 
     if (dailyPrices.length < timePeriod) {
@@ -65,17 +64,18 @@ function calculateSMA(data, timePeriod) {
         sum += dailyPrices[i];
     }
     const sma = sum / timePeriod;
-      console.log("SMA:", sma);
+    console.log("SMA:", sma);
     return sma;
 }
 
+
 // Funzione per calcolare l'EMA
 function calculateEMA(data, timePeriod) {
-    if (!data || !data["Time Series (Daily)"]) {
+    if (!data || !data["Time Series FX (Daily)"]) {
         console.error("calculateEMA: Errore: i dati necessari per l'EMA non sono stati restituiti dall'API");
         return null;
     }
-   const timeSeries = data["Time Series (Daily)"];
+   const timeSeries = data["Time Series FX (Daily)"];
     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
      console.log("dailyPrices", dailyPrices);
@@ -96,15 +96,15 @@ function calculateEMA(data, timePeriod) {
 }
 // Funzione per calcolare l'RSI
 function calculateRSI(data, timePeriod) {
-    if (!data || !data["Time Series (Daily)"]) {
+    if (!data || !data["Time Series FX (Daily)"]) {
         console.error("Errore: i dati necessari per l'RSI non sono stati restituiti dall'API");
         return null;
     }
 
-    const timeSeries = data["Time Series (Daily)"];
+    const timeSeries = data["Time Series FX (Daily)"];
     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
-     console.log("dailyPrices", dailyPrices);
+    console.log("dailyPrices", dailyPrices);
 
     if (dailyPrices.length < timePeriod + 1) {
         console.warn("Avviso: Dati insufficienti per calcolare l'RSI.");
@@ -134,7 +134,7 @@ function calculateRSI(data, timePeriod) {
      for (let i = gains.length - timePeriod; i > 0; i--) {
         let currentAvgGain =  gains.slice(i - timePeriod, i).reduce((a,b) => a + b, 0) / timePeriod;
         let currentAvgLoss = losses.slice(i - timePeriod, i).reduce((a,b) => a + b, 0) / timePeriod;
-        
+
         avgGain = (avgGain * (timePeriod -1) + gains[i-1]) / timePeriod;
         avgLoss = (avgLoss * (timePeriod -1) + losses[i-1]) / timePeriod;
 
@@ -152,11 +152,11 @@ function calculateRSI(data, timePeriod) {
 
 // Funzione per calcolare lo Stocastico
 function calculateStochastic(data, timePeriod) {
-   if (!data || !data["Time Series (Daily)"]) {
+   if (!data || !data["Time Series FX (Daily)"]) {
         console.error("calculateStochastic: Errore: i dati necessari per lo stocastico non sono stati restituiti dall'API");
         return null;
     }
-    const timeSeries = data["Time Series (Daily)"];
+    const timeSeries = data["Time Series FX (Daily)"];
     const dailyPrices = Object.values(timeSeries).map(dayData => ({
         close: parseFloat(dayData['4. close']),
         low: parseFloat(dayData['3. low']),
@@ -201,11 +201,11 @@ function calculateTrend(price, ema) {
 
 // Funzione per determinare i livelli di supporto e resistenza
 function calculateSupportResistance(data) {
-    if (!data || !data["Time Series (Daily)"]) {
+    if (!data || !data["Time Series FX (Daily)"]) {
         console.error("Errore: i dati necessari per il supporto e la resistenza non sono stati restituiti dall'API");
         return {support: null, resistance: null};
     }
-    const timeSeries = data["Time Series (Daily)"];
+    const timeSeries = data["Time Series FX (Daily)"];
      const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
       console.log("dailyPrices", dailyPrices);
     if (dailyPrices.length < 20) {
@@ -218,20 +218,21 @@ function calculateSupportResistance(data) {
     console.log("Support:", support, "Resistance:", resistance);
     return { support, resistance };
 }
+
 // Funzione per generare i segnali
 function generateSignal(price, ema, rsi, stochastic, fundamentalSentiment, trend, support, resistance) {
-   if (!price || !ema || !rsi || !trend || stochastic == null) {
-      console.log("Signal: null because a value is missing")
-        return null;
+    if (!price || !ema || !rsi || !trend || stochastic == null) {
+       console.log("Signal: null because a value is missing")
+       return null;
     }
 
-     let signal = null;
+    let signal = null;
 
-   if (trend === "uptrend" &&  rsi < RSI_OVERBOUGHT  && stochastic < STOCH_OVERSOLD && price > support) {
+    if (trend === "uptrend" &&  rsi < RSI_OVERBOUGHT  && stochastic < STOCH_OVERSOLD && price > support) {
         signal = {
             type: 'Acquista',
             entryPrice: price,
-             stopLoss: Math.max(support, price * (1 - STOP_LOSS_PERCENT)),
+            stopLoss: Math.max(support, price * (1 - STOP_LOSS_PERCENT)),
             takeProfit: resistance ? Math.min(resistance, price * (1 + TAKE_PROFIT_PERCENT)) : price * (1 + TAKE_PROFIT_PERCENT)
          };
     }
@@ -239,7 +240,7 @@ function generateSignal(price, ema, rsi, stochastic, fundamentalSentiment, trend
         signal = {
            type: 'Vendi',
             entryPrice: price,
-             stopLoss: Math.min(resistance, price * (1 + STOP_LOSS_PERCENT)),
+            stopLoss: Math.min(resistance, price * (1 + STOP_LOSS_PERCENT)),
            takeProfit: support ? Math.max(support, price * (1 - STOP_LOSS_PERCENT)) : price * (1 - STOP_LOSS_PERCENT)
         };
     }
@@ -249,12 +250,12 @@ function generateSignal(price, ema, rsi, stochastic, fundamentalSentiment, trend
 
 // Funzione per visualizzare il grafico
 async function aggiornaGrafico(data, signal) {
-    if (!data || !data["Time Series (Daily)"]) {
+    if (!data || !data["Time Series FX (Daily)"]) {
         console.error("Errore: i dati necessari per visualizzare il grafico non sono stati restituiti dall'API");
         return null;
     }
 
-   const timeSeries = data["Time Series (Daily)"];
+    const timeSeries = data["Time Series FX (Daily)"];
     const dailyData = Object.values(timeSeries).map(dayData => ({
         open: parseFloat(dayData['1. open']),
         high: parseFloat(dayData['2. high']),
@@ -264,11 +265,11 @@ async function aggiornaGrafico(data, signal) {
     console.log("dailyData", dailyData);
     const ema = calculateEMA(data, TIME_PERIOD_EMA);
      const { support, resistance } = calculateSupportResistance(data);
-    
+
     const chartData = {
          labels: Array.from({ length: dailyData.length }, (_, i) => i + 1),
         datasets: [{
-            label: 'Prezzo Gas Naturale',
+            label: 'Prezzo EUR/USD',
             data: dailyData.map(day => ({
                 x:  Array.from({ length: dailyData.length }, (_, i) => i + 1)[dailyData.indexOf(day)],
                 o: day.open,
@@ -278,7 +279,7 @@ async function aggiornaGrafico(data, signal) {
             })),
              borderColor: 'black',
              type: 'candlestick',
-            
+
            }]
     };
    if(ema) {
@@ -287,7 +288,7 @@ async function aggiornaGrafico(data, signal) {
                 data: dailyData.map(() => ({ x: Array.from({ length: dailyData.length }, (_, i) => i + 1),y:ema})),
                 borderColor: 'blue',
                 type: 'line',
-               
+
            })
     }
 
@@ -323,7 +324,7 @@ async function aggiornaGrafico(data, signal) {
              }
         });
     }
-  if (signal) {
+   if (signal) {
          if (!chartData.datasets[0].annotations) {
              chartData.datasets[0].annotations = [];
         }
@@ -370,7 +371,7 @@ async function aggiornaGrafico(data, signal) {
                          }
                      }
              });
-       
+
     }
 
     const chartConfig = {
@@ -411,11 +412,12 @@ async function aggiornaGrafico(data, signal) {
          myChart = new Chart(chartCanvas, chartConfig);
     }
 }
+
 // Funzione per aggiornare la pagina dei segnali
 async function aggiornaSegnaliPagina() {
     let data;
     if (previousData) {
-        const latestData = await getGasData();
+        const latestData = await getForexData();
         if (JSON.stringify(latestData) === JSON.stringify(previousData)) {
            console.log("No new data from the API, reusing the previous data");
             data = previousData;
@@ -426,7 +428,7 @@ async function aggiornaSegnaliPagina() {
         }
     } else {
         console.log("First time getting data from the API")
-        data = await getGasData();
+        data = await getForexData();
          previousData = data;
     }
    if (!data) {
@@ -437,8 +439,8 @@ async function aggiornaSegnaliPagina() {
         }
         return;
     }
-    const timeSeries = data["Time Series (Daily)"];
-    const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
+    const timeSeries = data["Time Series FX (Daily)"];
+     const dailyPrices = Object.values(timeSeries).map(dayData => parseFloat(dayData['4. close'])).reverse();
 
     const ema = calculateEMA(data, TIME_PERIOD_EMA);
     const rsi = calculateRSI(data, TIME_PERIOD_RSI);
@@ -452,7 +454,7 @@ async function aggiornaSegnaliPagina() {
 
      if (segnaliContainer) {
          if (signal) {
-             segnaliContainer.innerHTML = `<p>Segnale: <span style="font-weight: bold; color: ${signal.type === 'Acquista' ? 'green' : 'red'};">${signal.type}</span> a ${signal.entryPrice.toFixed(2)} con TP: ${signal.takeProfit.toFixed(2)} e SL: ${signal.stopLoss.toFixed(2)}</p>`;
+             segnaliContainer.innerHTML = `<p>Segnale: <span style="font-weight: bold; color: ${signal.type === 'Acquista' ? 'green' : 'red'};">${signal.type}</span> a ${signal.entryPrice.toFixed(4)} con TP: ${signal.takeProfit.toFixed(4)} e SL: ${signal.stopLoss.toFixed(4)}</p>`;
          } else {
              segnaliContainer.innerHTML = "<p>Nessun segnale generato al momento</p>";
          }
