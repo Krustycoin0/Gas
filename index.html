@@ -1,17 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trading Bot EUR/USD</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2"></script>
-
+     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2"></script>
 </head>
 <body>
-    <div id="segnali-container"></div>
-    <canvas id="myChart"></canvas>
+    <header>
+        <h1>Trading Bot EUR/USD</h1>
+    </header>
+
+    <main>
+        <section class="dashboard">
+            <div class="card">
+                <h2>Segnali di Trading</h2>
+                 <div id="segnali-container">
+                    <p>In attesa del segnale...</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Grafico Prezzo EUR/USD</h2>
+                <canvas id="myChart"></canvas>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2024 Trading Bot |  Disclaimer: Questo è un progetto dimostrativo, non un consiglio finanziario.  </p>
+    </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
