@@ -1,105 +1,63 @@
-/* Reset some basic browser styles for consistency */
-body, h1, h2, p {
+body {
+    font-family: 'Roboto', sans-serif;
     margin: 0;
     padding: 0;
-}
-
-body {
-    font-family: 'Arial', sans-serif;
-    line-height: 1.6;
-    color: #333;
     background-color: #f4f4f4;
-}
-
-.container {
-    width: 90%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 10px;
+    color: #333;
 }
 
 header {
-    background-color: #3498db;
-    color: white;
+    background-color: #333;
+    color: #fff;
     padding: 1em 0;
     text-align: center;
 }
 
-header h1 {
-    margin: 0;
-    font-size: 2em;
-}
-
 main {
-    padding: 20px 0;
+    padding: 20px;
 }
 
-.content-wrapper{
+.dashboard {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: center; /* Centra le card orizzontalmente */
     gap: 20px;
+
 }
 
-section {
-    background-color: white;
-    padding: 20px;
+.card {
+    background-color: #fff;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-     flex: 1 1 45%;
-     min-width: 300px;
-}
-section h2{
-    margin-bottom: 15px;
-     text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    flex: 1; /* Permette alle card di espandersi */
+    min-width: 300px; /* Larghezza minima per le card */
 }
 
-.signal-box {
-    background-color: #f0f0f0;
-    padding: 15px;
-    border-radius: 6px;
-    text-align: center;
-    font-size: 1.1em;
-    font-weight: bold;
+h2 {
+    margin-top: 0;
+    color: #333;
 }
 
-.signal-box p {
-    margin-bottom: 0;
+#segnali-container {
+     margin-top: 10px;
+    font-size: 1.2em;
 }
-
-.signal-box .green {
-   color: green;
-}
-
-.signal-box .red {
-    color: red;
-}
-
 canvas {
-     max-width: 100%;
-     height: auto;
-      display: block;
-    margin: 20px auto 0;
-}
+    width: 100% !important;
+    max-width: 800px; /*Larghezza massima per il canvas*/
+    margin-top: 20px;
+    display: block; /* Rimuove gli spazi extra */
+    margin-left: auto;
+    margin-right: auto;
 
+}
 footer {
     text-align: center;
     padding: 1em 0;
     background-color: #333;
-    color: white;
-    position: relative;
+    color: #fff;
+    position: fixed;
     bottom: 0;
-     width: 100%;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .content-wrapper {
-        flex-direction: column;
-    }
-    section {
-        flex: 1 1 100%;
-        min-width: unset;
-    }
-
+    width: 100%;
 }
