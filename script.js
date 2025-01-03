@@ -1,4 +1,4 @@
-const API_KEY = 'TUO_API_KEY_QUI'; // Inserisci qui la tua API Key di Alpha Vantage
+const API_KEY = 'B0SWA2L8J024OBMV'; // Inserisci qui la tua API Key di Alpha Vantage
 const SYMBOL = 'EURUSD'; // Cambio coppia EUR/USD
 const TIME_PERIOD_RSI = 14;
 const TIME_PERIOD_EMA = 250;
